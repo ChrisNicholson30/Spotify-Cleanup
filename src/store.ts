@@ -105,8 +105,7 @@ export const useStore = create<State>((set) => ({
     playlists: [],
   },
   loading: initialLoading,
-  setLibraryItems: (key, items) =>
-    set((s) => ({ library: { ...s.library, [key]: items } })),
+  setLibraryItems: (key, items) => set((s) => ({ library: { ...s.library, [key]: items } })),
   setLoading: (key, patch) =>
     set((s) => ({
       loading: { ...s.loading, [key]: { ...s.loading[key], ...patch } },
@@ -129,15 +128,13 @@ export const useStore = create<State>((set) => ({
       for (const id of ids) next.add(id);
       return { selection: { ...s.selection, [tab]: next } };
     }),
-  selectAll: (tab, ids) =>
-    set((s) => ({ selection: { ...s.selection, [tab]: new Set(ids) } })),
-  clearSelection: (tab) =>
-    set((s) => ({ selection: { ...s.selection, [tab]: new Set() } })),
+  selectAll: (tab, ids) => set((s) => ({ selection: { ...s.selection, [tab]: new Set(ids) } })),
+  clearSelection: (tab) => set((s) => ({ selection: { ...s.selection, [tab]: new Set() } })),
   removeFromLibraryAndSelection: (tab, ids) =>
     set((s) => {
       const idSet = new Set(ids);
       const lib = { ...s.library };
-      const filterById = <T,>(arr: T[], getId: (x: T) => string) =>
+      const filterById = <T>(arr: T[], getId: (x: T) => string) =>
         arr.filter((x) => !idSet.has(getId(x)));
       switch (tab) {
         case 'tracks':

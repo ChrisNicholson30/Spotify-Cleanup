@@ -43,7 +43,7 @@ export default function App() {
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div className="max-w-md space-y-3">
           <h1 className="text-2xl font-semibold">Setup required</h1>
-          <p className="text-fg-muted text-sm">
+          <p className="text-sm text-fg-muted">
             Set <code className="font-mono text-fg">VITE_SPOTIFY_CLIENT_ID</code> in{' '}
             <code className="font-mono text-fg">.env.local</code>, then run{' '}
             <code className="font-mono text-fg">npm run dev</code> again.
@@ -55,7 +55,7 @@ export default function App() {
 
   if (phase === 'boot' || phase === 'callback') {
     return (
-      <div className="flex h-full items-center justify-center text-fg-muted text-sm">
+      <div className="flex h-full items-center justify-center text-sm text-fg-muted">
         Connecting to Spotify…
       </div>
     );
@@ -66,7 +66,7 @@ export default function App() {
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div className="max-w-md space-y-3">
           <h1 className="text-xl font-semibold">Login failed</h1>
-          <p className="text-fg-muted text-sm">{callbackError}</p>
+          <p className="text-sm text-fg-muted">{callbackError}</p>
           <a href="/" className="btn-secondary inline-block">
             Try again
           </a>

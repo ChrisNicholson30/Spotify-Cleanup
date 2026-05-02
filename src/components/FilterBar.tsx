@@ -21,8 +21,7 @@ export default function FilterBar({ tab, hasAddedAt }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const inField =
-        target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      const inField = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (!inField && e.key === '/') {
         e.preventDefault();
         inputRef.current?.focus();
@@ -34,14 +33,14 @@ export default function FilterBar({ tab, hasAddedAt }: Props) {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 px-4 h-12 border-b border-line bg-bg-elev">
+    <div className="flex h-12 items-center gap-2 border-b border-line bg-bg-elev px-4">
       <input
         ref={inputRef}
         type="search"
         placeholder={`Filter… (press / to focus)`}
         value={filter.search}
         onChange={(e) => setFilter(tab, { search: e.target.value })}
-        className="input flex-1 max-w-md"
+        className="input max-w-md flex-1"
       />
       <select
         className="input max-w-[180px]"
@@ -54,7 +53,7 @@ export default function FilterBar({ tab, hasAddedAt }: Props) {
           </option>
         ))}
       </select>
-      <label className="flex items-center gap-2 text-xs text-fg-muted cursor-pointer select-none">
+      <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-fg-muted">
         <input
           type="checkbox"
           checked={filter.groupByArtist}

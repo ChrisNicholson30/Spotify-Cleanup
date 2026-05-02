@@ -10,8 +10,8 @@ export default function Toast() {
         ? 'bg-spotify text-black'
         : 'bg-bg-elev text-fg border border-line';
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-      <div className={`px-4 py-2 rounded-md shadow-lg text-sm ${color}`}>{toast.message}</div>
+    <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
+      <div className={`rounded-md px-4 py-2 text-sm shadow-lg ${color}`}>{toast.message}</div>
     </div>
   );
 }

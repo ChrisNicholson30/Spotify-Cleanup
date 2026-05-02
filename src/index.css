@@ -38,26 +38,26 @@ body {
     @apply btn bg-spotify text-black hover:bg-[#1ed760];
   }
   .btn-secondary {
-    @apply btn bg-bg-elev text-fg border border-line hover:bg-bg-hover;
+    @apply btn border border-line bg-bg-elev text-fg hover:bg-bg-hover;
   }
   .btn-danger {
     @apply btn bg-red-600/90 text-white hover:bg-red-600;
   }
   .btn-ghost {
-    @apply btn text-fg-muted hover:text-fg hover:bg-bg-hover;
+    @apply btn text-fg-muted hover:bg-bg-hover hover:text-fg;
   }
   .input {
     @apply w-full rounded-md border border-line bg-bg-elev px-3 py-1.5 text-sm placeholder:text-fg-dim focus:border-spotify focus:outline-none;
   }
   .row {
-    @apply flex items-center gap-3 px-4 border-b border-line/50 hover:bg-bg-hover transition-colors;
+    @apply flex items-center gap-3 border-b border-line/50 px-4 transition-colors hover:bg-bg-hover;
     height: 48px;
   }
   .row-selected {
-    @apply bg-bg-sel border-l-2 border-l-spotify pl-[14px] hover:bg-bg-sel;
+    @apply border-l-2 border-l-spotify bg-bg-sel pl-[14px] hover:bg-bg-sel;
   }
   .tab-btn {
-    @apply flex items-center justify-between w-full px-3 py-2 rounded-md text-sm text-fg-muted hover:text-fg hover:bg-bg-hover transition-colors;
+    @apply flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg;
   }
   .tab-btn-active {
     @apply tab-btn bg-bg-row text-fg;

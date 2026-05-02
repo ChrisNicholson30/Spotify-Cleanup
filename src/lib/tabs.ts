@@ -14,14 +14,7 @@ import {
   unfollowArtists,
   unfollowPlaylist,
 } from './spotify';
-import type {
-  Artist,
-  Playlist,
-  SavedAlbum,
-  SavedEpisode,
-  SavedShow,
-  SavedTrack,
-} from '../types';
+import type { Artist, Playlist, SavedAlbum, SavedEpisode, SavedShow, SavedTrack } from '../types';
 import { useStore } from '../store';
 
 export interface TabConfig {
@@ -29,10 +22,7 @@ export interface TabConfig {
   label: string;
   fetch: (onProgress: (n: number, t?: number) => void) => Promise<unknown[]>;
   toItems: (raw: unknown[]) => LibraryItem[];
-  delete: (
-    ids: string[],
-    onProgress: (done: number, total: number) => void,
-  ) => Promise<void>;
+  delete: (ids: string[], onProgress: (done: number, total: number) => void) => Promise<void>;
   deleteVerb: string;
   emptyMessage: string;
 }

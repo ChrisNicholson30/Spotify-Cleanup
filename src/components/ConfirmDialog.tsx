@@ -83,12 +83,14 @@ export default function ConfirmDialog({
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-md rounded-lg bg-bg-elev border border-line shadow-2xl"
+        className="w-full max-w-md rounded-lg border border-line bg-bg-elev shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5">
-          <h2 className="text-lg font-semibold mb-1">{title}</h2>
-          {description && <p className="text-sm text-fg-muted whitespace-pre-line">{description}</p>}
+          <h2 className="mb-1 text-lg font-semibold">{title}</h2>
+          {description && (
+            <p className="whitespace-pre-line text-sm text-fg-muted">{description}</p>
+          )}
         </div>
         <div className="flex items-center justify-end gap-2 px-5 pb-5">
           <button className="btn-secondary" onClick={onCancel}>
