@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-spotify text-black hover:bg-[#1ed760];
+  }
+  .btn-secondary {
+    @apply btn bg-bg-elev text-fg border border-line hover:bg-bg-hover;
+  }
+  .btn-danger {
+    @apply btn bg-red-600/90 text-white hover:bg-red-600;
+  }
+  .btn-ghost {
+    @apply btn text-fg-muted hover:text-fg hover:bg-bg-hover;
+  }
+  .input {
+    @apply w-full rounded-md border border-line bg-bg-elev px-3 py-1.5 text-sm placeholder:text-fg-dim focus:border-spotify focus:outline-none;
+  }
+  .row {
+    @apply flex items-center gap-3 px-4 border-b border-line/50 hover:bg-bg-hover transition-colors;
+    height: 48px;
+  }
+  .row-selected {
+    @apply bg-bg-sel border-l-2 border-l-spotify pl-[14px] hover:bg-bg-sel;
+  }
+  .tab-btn {
+    @apply flex items-center justify-between w-full px-3 py-2 rounded-md text-sm text-fg-muted hover:text-fg hover:bg-bg-hover transition-colors;
+  }
+  .tab-btn-active {
+    @apply tab-btn bg-bg-row text-fg;
+  }
+}
