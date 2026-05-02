@@ -1,0 +1,36 @@
+{
+  "tab_size": 2,
+  "hard_tabs": false,
+  "format_on_save": "on",
+  "formatter": "prettier",
+  "ensure_final_newline_on_save": true,
+  "remove_trailing_whitespace_on_save": true,
+  "languages": {
+    "TypeScript": { "tab_size": 2, "formatter": "prettier" },
+    "TSX": { "tab_size": 2, "formatter": "prettier" },
+    "JavaScript": { "tab_size": 2, "formatter": "prettier" },
+    "JSX": { "tab_size": 2, "formatter": "prettier" },
+    "JSON": { "tab_size": 2, "formatter": "prettier" },
+    "JSONC": { "tab_size": 2, "formatter": "prettier" },
+    "CSS": { "tab_size": 2, "formatter": "prettier" },
+    "HTML": { "tab_size": 2, "formatter": "prettier" },
+    "Markdown": { "tab_size": 2, "formatter": "prettier", "soft_wrap": "editor_width" }
+  },
+  "lsp": {
+    "tailwindcss-language-server": {
+      "settings": {
+        "tailwindCSS": {
+          "experimental": {
+            "classRegex": [
+              ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+              ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+            ]
+          }
+        }
+      }
+    }
+  },
+  "file_types": {
+    "Tailwind CSS": ["css"]
+  }
+}

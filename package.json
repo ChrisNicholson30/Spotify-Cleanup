@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,html,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,html,md}\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.51.0",
@@ -23,6 +25,8 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.39",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.5",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",
     "vite": "^5.3.4"

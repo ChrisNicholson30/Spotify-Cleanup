@@ -15,8 +15,8 @@ export default function Sidebar() {
       className="flex flex-col border-r border-line bg-bg-elev"
       style={{ width: 220, minWidth: 220 }}
     >
-      <div className="px-4 h-12 flex items-center border-b border-line gap-2">
-        <div className="h-6 w-6 rounded-full bg-spotify flex items-center justify-center">
+      <div className="flex h-12 items-center gap-2 border-b border-line px-4">
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-spotify">
           <svg viewBox="0 0 24 24" className="h-4 w-4 text-black">
             <path
               fill="currentColor"
@@ -27,7 +27,7 @@ export default function Sidebar() {
         <div className="text-sm font-semibold">Cleanup</div>
       </div>
 
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {ORDER.map((key) => {
           const tab = TABS[key];
           const items = library[key];
@@ -53,7 +53,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-t border-line text-[11px] text-fg-dim leading-relaxed">
+      <div className="border-t border-line p-3 text-[11px] leading-relaxed text-fg-dim">
         <p className="mb-1">Listening history & algorithm aren't API-accessible.</p>
         <a
           href="https://www.spotify.com/account/privacy/"

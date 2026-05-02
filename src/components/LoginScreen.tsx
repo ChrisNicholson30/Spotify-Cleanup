@@ -3,9 +3,9 @@ import { redirectToSpotify } from '../lib/auth';
 export default function LoginScreen() {
   return (
     <div className="flex h-full items-center justify-center px-6">
-      <div className="max-w-md w-full text-center space-y-6">
+      <div className="w-full max-w-md space-y-6 text-center">
         <div className="space-y-2">
-          <div className="mx-auto h-14 w-14 rounded-full bg-spotify flex items-center justify-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-spotify">
             <svg viewBox="0 0 24 24" className="h-9 w-9 text-black" aria-hidden>
               <path
                 fill="currentColor"
@@ -14,19 +14,17 @@ export default function LoginScreen() {
             </svg>
           </div>
           <h1 className="text-2xl font-semibold">Spotify Cleanup</h1>
-          <p className="text-fg-muted text-sm">
+          <p className="text-sm text-fg-muted">
             Bulk-curate or wipe your saved tracks, albums, follows and playlists.
           </p>
         </div>
         <button
-          className="btn-primary w-full text-base py-2.5"
+          className="btn-primary w-full py-2.5 text-base"
           onClick={() => redirectToSpotify().catch(console.error)}
         >
           Connect Spotify
         </button>
-        <p className="text-xs text-fg-dim">
-          PKCE flow · token stays in this browser · no server.
-        </p>
+        <p className="text-xs text-fg-dim">PKCE flow · token stays in this browser · no server.</p>
       </div>
     </div>
   );

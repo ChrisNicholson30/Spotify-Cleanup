@@ -23,7 +23,7 @@ export default function RateLimitBanner() {
 
   if (!until) return null;
   return (
-    <div className="fixed top-0 inset-x-0 z-50 bg-yellow-600/90 text-black text-sm py-2 text-center font-medium">
+    <div className="fixed inset-x-0 top-0 z-50 bg-yellow-600/90 py-2 text-center text-sm font-medium text-black">
       Rate limited by Spotify. Resuming in {remaining}s…
     </div>
   );

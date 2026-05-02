@@ -20,7 +20,7 @@ export default function SelectionBar({ tab, visibleItems, onDelete, onExport, on
   const count = selection.size;
 
   return (
-    <div className="flex items-center justify-between px-4 h-12 border-b border-line bg-bg-elev">
+    <div className="flex h-12 items-center justify-between border-b border-line bg-bg-elev px-4">
       <div className="flex items-center gap-2">
         <span className="font-mono text-sm text-fg">
           {count > 0 ? (
@@ -37,7 +37,12 @@ export default function SelectionBar({ tab, visibleItems, onDelete, onExport, on
         </span>
         <button
           className="btn-ghost text-xs"
-          onClick={() => selectAll(tab, visibleItems.map((i) => i.id))}
+          onClick={() =>
+            selectAll(
+              tab,
+              visibleItems.map((i) => i.id),
+            )
+          }
           disabled={visibleItems.length === 0}
         >
           Select all visible
@@ -53,7 +58,7 @@ export default function SelectionBar({ tab, visibleItems, onDelete, onExport, on
           Export JSON
         </button>
         <button
-          className="btn-secondary text-xs text-red-400 hover:text-red-300 border-red-900/50"
+          className="btn-secondary border-red-900/50 text-xs text-red-400 hover:text-red-300"
           onClick={onNuke}
           disabled={total === 0}
           title={`Delete every item in this tab`}

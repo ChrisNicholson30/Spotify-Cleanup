@@ -69,8 +69,7 @@ export default function LibraryView({ tab }: Props) {
         case 'artist':
           return (a.secondary || '').localeCompare(b.secondary || '');
         case 'added':
-          if (a.added_at && b.added_at)
-            return b.added_at.localeCompare(a.added_at);
+          if (a.added_at && b.added_at) return b.added_at.localeCompare(a.added_at);
           return 0;
       }
     });
@@ -105,12 +104,14 @@ export default function LibraryView({ tab }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const inField =
-        target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      const inField = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (inField) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
         e.preventDefault();
-        selectAll(tab, visibleItems.map((i) => i.id));
+        selectAll(
+          tab,
+          visibleItems.map((i) => i.id),
+        );
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selection.size === 0) return;
         e.preventDefault();
@@ -130,7 +131,10 @@ export default function LibraryView({ tab }: Props) {
     try {
       await config.delete(ids, (done, total) => setDeleting({ done, total }));
       removeFromLibraryAndSelection(tab, ids);
-      pushToast(`${config.deleteVerb}d ${ids.length.toLocaleString()} item${ids.length === 1 ? '' : 's'}`, 'success');
+      pushToast(
+        `${config.deleteVerb}d ${ids.length.toLocaleString()} item${ids.length === 1 ? '' : 's'}`,
+        'success',
+      );
     } catch (e) {
       pushToast(`Delete failed: ${(e as Error).message}`, 'error');
     } finally {
@@ -200,7 +204,7 @@ export default function LibraryView({ tab }: Props) {
   const hasAddedAt = items.some((i) => !!i.added_at);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex min-h-0 flex-1 flex-col">
       <FilterBar tab={tab} hasAddedAt={hasAddedAt} />
       <SelectionBar
         tab={tab}
@@ -211,14 +215,15 @@ export default function LibraryView({ tab }: Props) {
       />
 
       {deleting && (
-        <div className="px-4 py-2 bg-bg-elev border-b border-line text-xs font-mono text-fg-muted">
-          {config.deleteVerb}ing {deleting.done.toLocaleString()} / {deleting.total.toLocaleString()}…
+        <div className="border-b border-line bg-bg-elev px-4 py-2 font-mono text-xs text-fg-muted">
+          {config.deleteVerb}ing {deleting.done.toLocaleString()} /{' '}
+          {deleting.total.toLocaleString()}…
         </div>
       )}
 
-      <div className="flex-1 min-h-0">
+      <div className="min-h-0 flex-1">
         {visibleItems.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-fg-muted text-sm">
+          <div className="flex h-full items-center justify-center text-sm text-fg-muted">
             {isLoading
               ? `Loading ${config.label.toLowerCase()}…`
               : items.length === 0

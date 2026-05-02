@@ -1,10 +1,4 @@
-export type TabKey =
-  | 'tracks'
-  | 'albums'
-  | 'episodes'
-  | 'shows'
-  | 'artists'
-  | 'playlists';
+export type TabKey = 'tracks' | 'albums' | 'episodes' | 'shows' | 'artists' | 'playlists';
 
 export interface SpotifyImage {
   url: string;

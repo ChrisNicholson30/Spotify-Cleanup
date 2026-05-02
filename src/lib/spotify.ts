@@ -204,7 +204,9 @@ export async function getPlaylistTracks(
   playlistId: string,
   onProgress?: (n: number, t?: number) => void,
 ) {
-  return paginate<{ track: { id: string; uri: string; name: string; artists: { name: string }[] } | null }>(
+  return paginate<{
+    track: { id: string; uri: string; name: string; artists: { name: string }[] } | null;
+  }>(
     `/v1/playlists/${playlistId}/tracks`,
     { limit: 100, fields: 'items(track(id,uri,name,artists(name))),next,total' },
     onProgress,
