@@ -39,17 +39,54 @@ function buildUrl(path: string, query?: RequestOpts['query']): string {
   return url.toString();
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const id = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(id);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 
 let rateLimitNotifier: ((retryAfterSec: number) => void) | null = null;
 export function setRateLimitNotifier(fn: ((sec: number) => void) | null) {
   rateLimitNotifier = fn;
 }
 
+// Retry-After is sometimes missing, malformed, or absurdly large. Clamp to
+// keep us responsive without hammering Spotify when it asks us to back off.
+const MIN_RETRY_AFTER_SEC = 2;
+const MAX_RETRY_AFTER_SEC = 60;
+function parseRetryAfter(header: string | null): number {
+  const n = header == null ? NaN : parseInt(header, 10);
+  if (!Number.isFinite(n) || n <= 0) return 5;
+  return Math.min(MAX_RETRY_AFTER_SEC, Math.max(MIN_RETRY_AFTER_SEC, n));
+}
+
+const isAbortError = (e: unknown): boolean =>
+  e instanceof DOMException ? e.name === 'AbortError' : (e as { name?: string })?.name === 'AbortError';
+
+// Total attempts allowed for transient (network / 5xx) failures per request.
+// 429s do not consume this budget — those retry indefinitely with backoff.
+const MAX_TRANSIENT_ATTEMPTS = 8;
+
 export async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   const url = buildUrl(path, opts.query);
   let didRefresh = false;
-  for (let attempt = 0; attempt < 12; attempt++) {
+  let transientAttempts = 0;
+
+  while (true) {
+    if (opts.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
     const token = await getAccessToken();
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
@@ -59,26 +96,52 @@ export async function request<T>(path: string, opts: RequestOpts = {}): Promise<
       headers['Content-Type'] = 'application/json';
       body = JSON.stringify(opts.body);
     }
-    const res = await fetch(url, {
-      method: opts.method ?? 'GET',
-      headers,
-      body,
-      signal: opts.signal,
-    });
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: opts.method ?? 'GET',
+        headers,
+        body,
+        signal: opts.signal,
+      });
+    } catch (e) {
+      if (isAbortError(e)) throw e;
+      // Network failure (offline, DNS, TLS, connection reset). Back off and retry.
+      if (transientAttempts >= MAX_TRANSIENT_ATTEMPTS) {
+        throw new Error(
+          `Spotify network error after ${MAX_TRANSIENT_ATTEMPTS} retries: ${(e as Error)?.message ?? e}`,
+        );
+      }
+      const wait = Math.min(30_000, 500 * 2 ** transientAttempts);
+      transientAttempts++;
+      await sleep(wait, opts.signal);
+      continue;
+    }
 
     if (res.status === 204) return undefined as T;
 
     if (res.status === 429) {
-      const retryAfter = parseInt(res.headers.get('Retry-After') ?? '1', 10);
+      const retryAfter = parseRetryAfter(res.headers.get('Retry-After'));
       rateLimitNotifier?.(retryAfter);
-      await sleep((retryAfter + 1) * 1000);
+      await sleep(retryAfter * 1000, opts.signal);
+      continue;
+    }
+
+    // 5xx — Spotify side flake. Exponential backoff, bounded retries.
+    if (res.status >= 500 && res.status <= 599) {
+      if (transientAttempts >= MAX_TRANSIENT_ATTEMPTS) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Spotify ${res.status} ${res.statusText} after retries: ${text}`);
+      }
+      const wait = Math.min(30_000, 500 * 2 ** transientAttempts);
+      transientAttempts++;
+      await sleep(wait, opts.signal);
       continue;
     }
 
     if (res.status === 401 && !didRefresh) {
       didRefresh = true;
-      // Force refresh by clearing access expiry — getAccessToken will re-fetch.
-      // Then retry once.
       try {
         await getAccessToken();
       } catch {
@@ -100,19 +163,19 @@ export async function request<T>(path: string, opts: RequestOpts = {}): Promise<
     }
     return undefined as T;
   }
-  throw new Error('Spotify request: too many retries');
 }
 
 export async function paginate<T>(
   path: string,
   query: RequestOpts['query'] = { limit: 50 },
   onProgress?: (loaded: number, total?: number) => void,
+  signal?: AbortSignal,
 ): Promise<T[]> {
   const out: T[] = [];
   let next: string | null = buildUrl(path, query);
   let total: number | undefined;
   while (next) {
-    const page: PageResponse<T> = await request<PageResponse<T>>(next);
+    const page: PageResponse<T> = await request<PageResponse<T>>(next, { signal });
     out.push(...page.items);
     total = page.total ?? total;
     onProgress?.(out.length, total);
@@ -123,13 +186,16 @@ export async function paginate<T>(
 
 export async function paginateArtists(
   onProgress?: (loaded: number, total?: number) => void,
+  signal?: AbortSignal,
 ): Promise<Artist[]> {
   const out: Artist[] = [];
   let url: string | null = buildUrl('/v1/me/following', { type: 'artist', limit: 50 });
   let total: number | undefined;
   while (url) {
     const res: { artists: { items: Artist[]; next: string | null; total?: number } } =
-      await request<{ artists: { items: Artist[]; next: string | null; total?: number } }>(url);
+      await request<{ artists: { items: Artist[]; next: string | null; total?: number } }>(url, {
+        signal,
+      });
     out.push(...res.artists.items);
     total = res.artists.total ?? total;
     onProgress?.(out.length, total);
@@ -142,20 +208,35 @@ export async function getMe(): Promise<SpotifyUser> {
   return request<SpotifyUser>('/v1/me');
 }
 
-export async function getSavedTracks(onProgress?: (n: number, t?: number) => void) {
-  return paginate<SavedTrack>('/v1/me/tracks', { limit: 50 }, onProgress);
+export async function getSavedTracks(
+  onProgress?: (n: number, t?: number) => void,
+  signal?: AbortSignal,
+) {
+  return paginate<SavedTrack>('/v1/me/tracks', { limit: 50 }, onProgress, signal);
 }
-export async function getSavedAlbums(onProgress?: (n: number, t?: number) => void) {
-  return paginate<SavedAlbum>('/v1/me/albums', { limit: 50 }, onProgress);
+export async function getSavedAlbums(
+  onProgress?: (n: number, t?: number) => void,
+  signal?: AbortSignal,
+) {
+  return paginate<SavedAlbum>('/v1/me/albums', { limit: 50 }, onProgress, signal);
 }
-export async function getSavedEpisodes(onProgress?: (n: number, t?: number) => void) {
-  return paginate<SavedEpisode>('/v1/me/episodes', { limit: 50 }, onProgress);
+export async function getSavedEpisodes(
+  onProgress?: (n: number, t?: number) => void,
+  signal?: AbortSignal,
+) {
+  return paginate<SavedEpisode>('/v1/me/episodes', { limit: 50 }, onProgress, signal);
 }
-export async function getSavedShows(onProgress?: (n: number, t?: number) => void) {
-  return paginate<SavedShow>('/v1/me/shows', { limit: 50 }, onProgress);
+export async function getSavedShows(
+  onProgress?: (n: number, t?: number) => void,
+  signal?: AbortSignal,
+) {
+  return paginate<SavedShow>('/v1/me/shows', { limit: 50 }, onProgress, signal);
 }
-export async function getPlaylists(onProgress?: (n: number, t?: number) => void) {
-  return paginate<Playlist>('/v1/me/playlists', { limit: 50 }, onProgress);
+export async function getPlaylists(
+  onProgress?: (n: number, t?: number) => void,
+  signal?: AbortSignal,
+) {
+  return paginate<Playlist>('/v1/me/playlists', { limit: 50 }, onProgress, signal);
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -164,45 +245,68 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+// Pause between successful batches. Spotify's per-app rolling window penalises
+// burst traffic; a small spacing keeps us well below the rate-limit threshold
+// when sweeping thousands of items.
+const BATCH_PACE_MS = 120;
+
+export interface DeleteBatchOptions {
+  signal?: AbortSignal;
+  // Called after a batch succeeds so the UI can reflect what was actually
+  // removed even if the operation is later cancelled or fails.
+  onBatchComplete?: (committedIds: string[]) => void;
+}
+
 export async function deleteInBatches(
   ids: string[],
-  fn: (batch: string[]) => Promise<void>,
+  fn: (batch: string[], signal?: AbortSignal) => Promise<void>,
   onProgress?: (done: number, total: number) => void,
+  options: DeleteBatchOptions = {},
 ): Promise<void> {
   const batches = chunk(ids, 50);
   let done = 0;
-  for (const b of batches) {
-    await fn(b);
+  for (let i = 0; i < batches.length; i++) {
+    if (options.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    const b = batches[i];
+    await fn(b, options.signal);
     done += b.length;
+    options.onBatchComplete?.(b);
     onProgress?.(done, ids.length);
+    if (i < batches.length - 1) {
+      await sleep(BATCH_PACE_MS, options.signal);
+    }
   }
 }
 
-export async function removeSavedTracks(ids: string[]) {
-  await request('/v1/me/tracks', { method: 'DELETE', body: { ids } });
+export async function removeSavedTracks(ids: string[], signal?: AbortSignal) {
+  await request('/v1/me/tracks', { method: 'DELETE', body: { ids }, signal });
 }
-export async function removeSavedAlbums(ids: string[]) {
-  await request('/v1/me/albums', { method: 'DELETE', body: { ids } });
+export async function removeSavedAlbums(ids: string[], signal?: AbortSignal) {
+  await request('/v1/me/albums', { method: 'DELETE', body: { ids }, signal });
 }
-export async function removeSavedEpisodes(ids: string[]) {
-  await request('/v1/me/episodes', { method: 'DELETE', body: { ids } });
+export async function removeSavedEpisodes(ids: string[], signal?: AbortSignal) {
+  await request('/v1/me/episodes', { method: 'DELETE', body: { ids }, signal });
 }
-export async function removeSavedShows(ids: string[]) {
-  await request('/v1/me/shows', { method: 'DELETE', query: { ids: ids.join(',') } });
+export async function removeSavedShows(ids: string[], signal?: AbortSignal) {
+  await request('/v1/me/shows', { method: 'DELETE', query: { ids: ids.join(',') }, signal });
 }
-export async function unfollowArtists(ids: string[]) {
+export async function unfollowArtists(ids: string[], signal?: AbortSignal) {
   await request('/v1/me/following', {
     method: 'DELETE',
     query: { type: 'artist', ids: ids.join(',') },
+    signal,
   });
 }
-export async function unfollowPlaylist(playlistId: string) {
-  await request(`/v1/playlists/${playlistId}/followers`, { method: 'DELETE' });
+export async function unfollowPlaylist(playlistId: string, signal?: AbortSignal) {
+  await request(`/v1/playlists/${playlistId}/followers`, { method: 'DELETE', signal });
 }
 
 export async function getPlaylistTracks(
   playlistId: string,
   onProgress?: (n: number, t?: number) => void,
+  signal?: AbortSignal,
 ) {
   return paginate<{
     track: { id: string; uri: string; name: string; artists: { name: string }[] } | null;
@@ -210,12 +314,14 @@ export async function getPlaylistTracks(
     `/v1/playlists/${playlistId}/tracks`,
     { limit: 100, fields: 'items(track(id,uri,name,artists(name))),next,total' },
     onProgress,
+    signal,
   );
 }
 
-export async function removePlaylistTracks(playlistId: string, uris: string[]) {
+export async function removePlaylistTracks(playlistId: string, uris: string[], signal?: AbortSignal) {
   await request(`/v1/playlists/${playlistId}/tracks`, {
     method: 'DELETE',
     body: { tracks: uris.map((uri) => ({ uri })) },
+    signal,
   });
 }

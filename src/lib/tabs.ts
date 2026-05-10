@@ -17,12 +17,21 @@ import {
 import type { Artist, Playlist, SavedAlbum, SavedEpisode, SavedShow, SavedTrack } from '../types';
 import { useStore } from '../store';
 
+export interface DeleteOptions {
+  signal?: AbortSignal;
+  onBatchComplete?: (committedIds: string[]) => void;
+}
+
 export interface TabConfig {
   key: TabKey;
   label: string;
   fetch: (onProgress: (n: number, t?: number) => void) => Promise<unknown[]>;
   toItems: (raw: unknown[]) => LibraryItem[];
-  delete: (ids: string[], onProgress: (done: number, total: number) => void) => Promise<void>;
+  delete: (
+    ids: string[],
+    onProgress: (done: number, total: number) => void,
+    options?: DeleteOptions,
+  ) => Promise<void>;
   deleteVerb: string;
   emptyMessage: string;
 }
@@ -46,7 +55,7 @@ export const TABS: Record<TabKey, TabConfig> = {
         added_at: s.added_at,
         raw: s,
       })),
-    delete: (ids, p) => deleteInBatches(ids, removeSavedTracks, p),
+    delete: (ids, p, opts) => deleteInBatches(ids, removeSavedTracks, p, opts),
     deleteVerb: 'Remove',
     emptyMessage: 'No saved tracks',
   },
@@ -64,7 +73,7 @@ export const TABS: Record<TabKey, TabConfig> = {
         added_at: s.added_at,
         raw: s,
       })),
-    delete: (ids, p) => deleteInBatches(ids, removeSavedAlbums, p),
+    delete: (ids, p, opts) => deleteInBatches(ids, removeSavedAlbums, p, opts),
     deleteVerb: 'Remove',
     emptyMessage: 'No saved albums',
   },
@@ -82,7 +91,7 @@ export const TABS: Record<TabKey, TabConfig> = {
         added_at: s.added_at,
         raw: s,
       })),
-    delete: (ids, p) => deleteInBatches(ids, removeSavedEpisodes, p),
+    delete: (ids, p, opts) => deleteInBatches(ids, removeSavedEpisodes, p, opts),
     deleteVerb: 'Remove',
     emptyMessage: 'No saved episodes',
   },
@@ -100,7 +109,7 @@ export const TABS: Record<TabKey, TabConfig> = {
         added_at: s.added_at,
         raw: s,
       })),
-    delete: (ids, p) => deleteInBatches(ids, removeSavedShows, p),
+    delete: (ids, p, opts) => deleteInBatches(ids, removeSavedShows, p, opts),
     deleteVerb: 'Remove',
     emptyMessage: 'No saved shows',
   },
@@ -117,7 +126,7 @@ export const TABS: Record<TabKey, TabConfig> = {
         imageUrl: imageUrl(a.images),
         raw: a,
       })),
-    delete: (ids, p) => deleteInBatches(ids, unfollowArtists, p),
+    delete: (ids, p, opts) => deleteInBatches(ids, unfollowArtists, p, opts),
     deleteVerb: 'Unfollow',
     emptyMessage: 'Not following any artists',
   },
@@ -134,12 +143,27 @@ export const TABS: Record<TabKey, TabConfig> = {
         imageUrl: imageUrl(pl.images),
         raw: pl,
       })),
-    delete: async (ids, onProgress) => {
+    delete: async (ids, onProgress, opts) => {
       let done = 0;
       for (const id of ids) {
-        await unfollowPlaylist(id);
+        if (opts?.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        await unfollowPlaylist(id, opts?.signal);
         done++;
+        opts?.onBatchComplete?.([id]);
         onProgress(done, ids.length);
+        if (done < ids.length) {
+          await new Promise<void>((resolve, reject) => {
+            const t = setTimeout(() => resolve(), 120);
+            opts?.signal?.addEventListener(
+              'abort',
+              () => {
+                clearTimeout(t);
+                reject(new DOMException('Aborted', 'AbortError'));
+              },
+              { once: true },
+            );
+          });
+        }
       }
     },
     deleteVerb: 'Unfollow / Delete',

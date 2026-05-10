@@ -86,6 +86,7 @@ export default function LibraryView({ tab }: Props) {
   const lastClickIndex = useRef<number | null>(null);
   const [deleting, setDeleting] = useState<{ done: number; total: number } | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(CLOSED);
+  const abortRef = useRef<AbortController | null>(null);
 
   const handleRowClick = (e: React.MouseEvent, idx: number) => {
     const item = visibleItems[idx];
@@ -127,19 +128,51 @@ export default function LibraryView({ tab }: Props) {
 
   const performDelete = async (ids: string[]) => {
     if (ids.length === 0) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     setDeleting({ done: 0, total: ids.length });
+    let committed = 0;
     try {
-      await config.delete(ids, (done, total) => setDeleting({ done, total }));
-      removeFromLibraryAndSelection(tab, ids);
+      await config.delete(
+        ids,
+        (done, total) => setDeleting({ done, total }),
+        {
+          signal: controller.signal,
+          // Drop each batch from the library + selection as soon as Spotify
+          // confirms it. Keeps progress visible if the user cancels or a later
+          // batch fails after retries.
+          onBatchComplete: (batchIds) => {
+            committed += batchIds.length;
+            removeFromLibraryAndSelection(tab, batchIds);
+          },
+        },
+      );
       pushToast(
         `${config.deleteVerb}d ${ids.length.toLocaleString()} item${ids.length === 1 ? '' : 's'}`,
         'success',
       );
     } catch (e) {
-      pushToast(`Delete failed: ${(e as Error).message}`, 'error');
+      const isAbort =
+        (e as { name?: string })?.name === 'AbortError' || controller.signal.aborted;
+      if (isAbort) {
+        pushToast(
+          `Cancelled — ${committed.toLocaleString()} of ${ids.length.toLocaleString()} ${config.deleteVerb.toLowerCase()}d`,
+          'info',
+        );
+      } else {
+        pushToast(
+          `${config.deleteVerb} stopped after ${committed.toLocaleString()} of ${ids.length.toLocaleString()}: ${(e as Error).message}`,
+          'error',
+        );
+      }
     } finally {
+      abortRef.current = null;
       setDeleting(null);
     }
+  };
+
+  const cancelDelete = () => {
+    abortRef.current?.abort();
   };
 
   const startDelete = () => {
@@ -215,10 +248,12 @@ export default function LibraryView({ tab }: Props) {
       />
 
       {deleting && (
-        <div className="border-b border-line bg-bg-elev px-4 py-2 font-mono text-xs text-fg-muted">
-          {config.deleteVerb}ing {deleting.done.toLocaleString()} /{' '}
-          {deleting.total.toLocaleString()}…
-        </div>
+        <DeletingBar
+          verb={config.deleteVerb}
+          done={deleting.done}
+          total={deleting.total}
+          onCancel={cancelDelete}
+        />
       )}
 
       <div className="min-h-0 flex-1">
@@ -255,6 +290,54 @@ export default function LibraryView({ tab }: Props) {
         onConfirm={confirm.onConfirm}
         onCancel={() => setConfirm(CLOSED)}
       />
+    </div>
+  );
+}
+
+interface DeletingBarProps {
+  verb: string;
+  done: number;
+  total: number;
+  onCancel: () => void;
+}
+
+function DeletingBar({ verb, done, total, onCancel }: DeletingBarProps) {
+  const rateLimitedUntil = useStore((s) => s.rateLimitedUntil);
+  const [now, setNow] = useState(() => Date.now());
+  const waitingForRateLimit = rateLimitedUntil != null && rateLimitedUntil > now;
+
+  useEffect(() => {
+    if (rateLimitedUntil == null) return;
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [rateLimitedUntil]);
+
+  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  const remainingSec = waitingForRateLimit
+    ? Math.max(0, Math.ceil((rateLimitedUntil! - now) / 1000))
+    : 0;
+
+  return (
+    <div className="border-b border-line bg-bg-elev px-4 py-2">
+      <div className="flex items-center justify-between gap-4">
+        <span className="font-mono text-xs text-fg-muted">
+          {verb}ing {done.toLocaleString()} / {total.toLocaleString()} ({pct}%)
+          {waitingForRateLimit && (
+            <span className="ml-2 text-yellow-400">
+              · paused by Spotify rate limit, retrying in {remainingSec}s
+            </span>
+          )}
+        </span>
+        <button className="btn-ghost text-xs" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+      <div className="mt-1 h-1 w-full overflow-hidden rounded bg-bg">
+        <div
+          className="h-full bg-fg-muted transition-[width] duration-150"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }
